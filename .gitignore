@@ -1,0 +1,43 @@
+# Dependencias
+/node_modules/
+/.pnp
+.pnp.js
+
+# Entorno de desarrollo
+.env*.local
+.env
+.next/
+out/
+
+# Caché
+/.next/cache/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build output
+.next
+dist
+build
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+*.log
+*.env
+.cache
+.turbo
