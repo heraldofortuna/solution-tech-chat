@@ -1,0 +1,1 @@
+export type BusinessTopic = 'organigrama' | 'misión' | 'visión' | 'proyectos' | 'servicios' | 'contacto' | 'default';

@@ -1,6 +1,6 @@
 "use client";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
-import { FaRegMoon } from "react-icons/fa";
+import { FaRegMoon, FaSearch } from "react-icons/fa";
 import { GoSun } from "react-icons/go";
 import { LuSendHorizontal, LuCheckCheck, LuPaperclip, LuDownload } from "react-icons/lu";
 import { FileIcon } from "lucide-react";
@@ -16,6 +16,7 @@ export default function Page() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState<string>("");
+  const [search, setSearch] = useState<string>("");
   const [files, setFiles] = useState<File[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
@@ -122,9 +123,24 @@ export default function Page() {
         {/* Header */}
         <header className="w-full h-15 md:h-20 border-b px-6 md:px-12">
           <div className="h-full flex items-center justify-between gap-6">
-            <h1 className="text-lg md:text-3xl font-bold leading-10 whitespace-nowrap">SolutionTech🤖</h1>
+            <h1 className="hidden md:block text-lg md:text-3xl font-bold leading-10 whitespace-nowrap">SolutionTech🤖</h1>
+            <h1 className="block md:hidden text-lg md:text-3xl font-bold leading-10 whitespace-nowrap">ST🤖</h1>
             <div className="flex items-center gap-2">
-              <Input type="text" placeholder="Buscar mensaje" className="!bg-white dark:!bg-[#181414] text-sm md:text-base" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                type="text"
+                placeholder="Buscar mensaje"
+                className="!bg-white dark:!bg-[#181414] text-sm md:text-base"
+              />
+              <Button
+                type="button"
+                className="!w-9 !h-9 cursor-pointer"
+                disabled={search.length === 0}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <FaSearch />
+              </Button>
               <Button variant="outline" size="icon" onClick={toggleTheme}>
                 {isDarkMode ? <FaRegMoon /> : <GoSun />}
               </Button>
@@ -135,77 +151,83 @@ export default function Page() {
         <main className="main p-6 md:py-8 md:px-12">
           <div className="h-full flex flex-col gap-6">
             {/* Área de mensajes */}
-            <div ref={scrollContainerRef} className="flex-1 scrollContainer overflow-y-auto">
-              {messages.map((message: Message) => (
-                <div
-                  key={message.id}
-                  className={`relative max-w-[90%] md:max-w-[60%] text-sm md:text-base p-3 pb-8 mb-3 rounded-2xl ${
-                    message.sender === 'user' 
-                      ? 'ml-auto bg-[#4F46E5] text-white' 
-                      : 'mr-auto bg-white border border-[#E2E8F0] dark:text-black'
-                  }`}
-                >
-                  {message.text && <p className="mb-2">{message.text}</p>}
-                  {message.files?.map((file: any, index: number) => (
-                    <div key={index} className="mt-2 rounded-lg overflow-hidden">
-                      {file.type.startsWith('image/') ? (
-                        <img
-                          src={file.image}
-                          alt={file.name}
-                          className="max-w-full object-contain"
-                          loading="lazy"
-                        />
-                      ) : file.type === 'application/pdf' ? (
-                        <a
-                          href={file.image}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          download={file.name}
-                          className="w-fit flex items-center justify-between gap-4 p-3 border rounded-xl ml-auto cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <FileIcon type={file.type} />
-                            <span className="flex-1">{file.name}</span>
-                          </div>
-                          <span className="text-xs italic pt-1">{file.size}</span>
-                        </a>
-                      ) : file.type === 'video/mp4' ? (
-                          <div className="flex flex-col gap-2">
-                            <video 
-                              controls 
-                              className="max-h-64 rounded-lg"
-                              src={file.image || URL.createObjectURL(file)}
-                            />
-                            <a
-                              href={file.image}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              download={file.name}
-                              className="flex items-center gap-2 text-sm ml-auto mb-2"
-                            >
-                              <LuDownload className="h-4 w-4" />
-                              Descargar
-                            </a>
-                          </div>
-                        ) : (
-                        <div className="p-3 flex items-center gap-2">
-                          <FileIcon type={file.type} />
+            {messages.length === 0 ? (
+              <div className="h-full w-full flex items-center justify-center">
+                <p className="text-sm font-medium">No hay mensajes</p>
+              </div>
+            ) : (
+              <div ref={scrollContainerRef} className="flex-1 scrollContainer overflow-y-auto">
+                {messages.map((message: Message) => (
+                  <div
+                    key={message.id}
+                    className={`relative max-w-[90%] md:max-w-[60%] text-sm md:text-base p-3 pb-8 mb-3 rounded-2xl ${
+                      message.sender === 'user' 
+                        ? 'ml-auto bg-[#4F46E5] text-white' 
+                        : 'mr-auto bg-white border border-[#E2E8F0] dark:text-black'
+                    }`}
+                  >
+                    {message.text && <p className="mb-2">{message.text}</p>}
+                    {message.files?.map((file: any, index: number) => (
+                      <div key={index} className="mt-2 rounded-lg overflow-hidden">
+                        {file.type.startsWith('image/') ? (
+                          <img
+                            src={file.image}
+                            alt={file.name}
+                            className="max-w-full object-contain"
+                            loading="lazy"
+                          />
+                        ) : file.type === 'application/pdf' ? (
                           <a
-                            href={file.path}
+                            href={file.image}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:underline"
+                            download={file.name}
+                            className="w-fit flex items-center justify-between gap-4 p-3 border rounded-xl ml-auto cursor-pointer"
                           >
-                            {file.name}
+                            <div className="flex items-center gap-2">
+                              <FileIcon type={file.type} />
+                              <span className="flex-1">{file.name}</span>
+                            </div>
+                            <span className="text-xs italic pt-1">{file.size}</span>
                           </a>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  <span className="absolute bottom-3 right-3 text-xs font-medium flex items-center gap-1 opacity-50">{message.time} <LuCheckCheck /></span>
-                </div>
-              ))}
-            </div>
+                        ) : file.type === 'video/mp4' ? (
+                            <div className="flex flex-col gap-2">
+                              <video 
+                                controls 
+                                className="max-h-64 rounded-lg"
+                                src={file.image || URL.createObjectURL(file)}
+                              />
+                              <a
+                                href={file.image}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download={file.name}
+                                className="flex items-center gap-2 text-sm ml-auto mb-2"
+                              >
+                                <LuDownload className="h-4 w-4" />
+                                Descargar
+                              </a>
+                            </div>
+                          ) : (
+                          <div className="p-3 flex items-center gap-2">
+                            <FileIcon type={file.type} />
+                            <a
+                              href={file.path}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              {file.name}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    <span className="absolute bottom-3 right-3 text-xs font-medium flex items-center gap-1 opacity-50">{message.time} <LuCheckCheck /></span>
+                  </div>
+                ))}
+              </div>
+            )}
             {/* Formulario de chat */}
             <form onSubmit={handleSubmit} className="mt-auto mx-0 flex flex-col items-end gap-2 md:gap-4">
               {/* Vista previa de archivos */}
