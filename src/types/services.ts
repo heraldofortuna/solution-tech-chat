@@ -1,8 +1,10 @@
 import { Sender } from "./sender";
 
-export interface Message {
+export interface MessageResponse {
   id: string;
   text: string;
   sender: Sender;
-  time: string;
+  createdAt: number;
+  chatId: string;
 }
+

@@ -4,8 +4,9 @@ export const db = factory({
   message: {
     id: primaryKey(String),
     text: String,
-    sender: String, // 'user' o 'bot'
+    sender: String,
     createdAt: Number,
+    chatId: String,
   },
 });
 
