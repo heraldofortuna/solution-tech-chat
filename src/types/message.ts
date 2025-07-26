@@ -1,3 +1,4 @@
+import { ChatFile } from "./chatfile";
 import { Sender } from "./sender";
 
 export interface Message {
@@ -5,4 +6,5 @@ export interface Message {
   text: string;
   sender: Sender;
   time: string;
+  files?: ChatFile[];
 }

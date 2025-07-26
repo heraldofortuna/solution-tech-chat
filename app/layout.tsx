@@ -5,6 +5,9 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Solution Tech Chat',
   description: 'Chat-type application that allows users to make autonomous inquiries about the company.',
+  icons: {
+    icon: '/favicon.ico',
+  }
 }
 
 export default function RootLayout({

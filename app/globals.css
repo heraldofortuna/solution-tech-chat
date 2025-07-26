@@ -119,3 +119,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+.main {
+  height: calc(100vh - 60px);
+}
+
+@media (min-width: 768px) {
+  .main {
+    height: calc(100vh - 80px);
+  }
+}

@@ -6,7 +6,7 @@ export const db = factory({
     text: String,
     sender: String,
     createdAt: Number,
-    chatId: String,
+    files: Array,
   },
 });
 
@@ -16,4 +16,5 @@ db.message.create({
   text: '¡Hola! Soy SolutionTech. ¿En qué puedo ayudarte?',
   sender: 'bot',
   createdAt: Date.now(),
+  files: [], // Inicializar como array vacío
 });

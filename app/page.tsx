@@ -1,6 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
-import { FaBeer } from "react-icons/fa";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { FaRegMoon } from "react-icons/fa";
+import { GoSun } from "react-icons/go";
+import { LuSendHorizontal, LuCheckCheck, LuPaperclip } from "react-icons/lu";
+import { FileIcon } from "lucide-react";
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,21 +12,31 @@ import { Message } from "@/types/message";
 import timestampToHHMM from "@/utils/timestampToHHMM";
 
 export default function Page() {
-  const { setTheme } = useTheme()
+  const { setTheme } = useTheme();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState<string>("");
+  const [files, setFiles] = useState<File[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Iniciar MSW solo en cliente
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const setupMocks = async () => {
-        const { worker } = await import('@/mocks/browser');
-        await worker.start();
-      };
-      setupMocks();
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  }
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      const newFiles = Array.from(event.target.files);
+      const allowedFiles = newFiles.filter(file => 
+        file.type.match(/image\/(jpg|jpeg|png)|video\/mp4|application\/pdf/)
+      );
+      setFiles(prev => [...prev, ...allowedFiles]);
     }
-  }, []);
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const loadMessages = async () => {
     try {
@@ -34,6 +47,7 @@ export default function Page() {
         text: message.text,
         sender: message.sender,
         time: timestampToHHMM(message.createdAt),
+        files: message.files,
       }));
       setMessages(messages);
     } catch (error) {
@@ -41,79 +55,190 @@ export default function Page() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!input.trim() && files.length === 0) return;
 
     setIsLoading(true);
-    
+
     try {
-      await fetch('/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: input }),
-      });
+      const formData = new FormData();
+      formData.append('text', input);
       
+      files.forEach((file, index) => {
+        formData.append(`file_${index}`, file);
+      });
+
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Error al enviar');
+
       await loadMessages();
+
       setInput('');
+      setFiles([]);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    setTheme(isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode])
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const setupMocks = async () => {
+        const { worker } = await import('@/mocks/browser');
+        await worker.start();
+      };
+      setupMocks();
+    }
+  }, []);
+
   return (
     <div className="flex">
-      <aside className="w-20 h-screen border-r">
+      <aside className="hidden md:block w-20 h-screen border-r">
         <div className="flex flex-col">
         </div>
       </aside>
-      <div className=" w-full h-screen flex flex-col">
-        <header className="w-full border-b p-2 md:p-6">
-          <div className="flex items-center justify-between gap-6">
-            <h1 className="text-lg md:text-3xl font-bold leading-10">SolutionTech🤖</h1>
-            <div>
-              <Input type="text" placeholder="Buscar mensaje" />
-              <Button variant="outline" size="icon" onClick={() => setTheme("light")}>
-                <span className="sr-only">Toggle theme</span>
-              </Button>
-              <Button variant="outline" size="icon" onClick={() => setTheme("dark")}>
-                <span className="sr-only">Toggle theme</span>
+      <div className="bg-[#F8FAFC] dark:bg-[#000] w-full h-screen flex flex-col">
+        {/* Header */}
+        <header className="w-full h-15 md:h-20 border-b px-6 md:px-12">
+          <div className="h-full flex items-center justify-between gap-6">
+            <h1 className="text-lg md:text-3xl font-bold leading-10 whitespace-nowrap">SolutionTech🤖</h1>
+            <div className="flex items-center gap-2">
+              <Input type="text" placeholder="Buscar mensaje" className="!bg-white dark:!bg-[#181414]" />
+              <Button variant="outline" size="icon" onClick={toggleTheme}>
+                {isDarkMode ? <FaRegMoon /> : <GoSun />}
               </Button>
             </div>
           </div>
         </header>
-        <main className="h-full p-6 md:py-8 md:px-24">
+        {/* Main */}
+        <main className="main p-6 md:py-8 md:px-12">
           <div className="h-full flex flex-col gap-6">
             {/* Área de mensajes */}
             <div className="flex-1 overflow-y-auto">
-              {messages.map((message) => (
-                <div 
-                  key={message.id} 
-                  className={`relative mb-4 p-4 rounded-lg max-w-[80%] ${
+              {messages.map((message: Message) => (
+                <div
+                  key={message.id}
+                  className={`relative max-w-[60%] p-3 pb-8 mb-3 rounded-2xl ${
                     message.sender === 'user' 
-                      ? 'ml-auto bg-blue-500 text-white' 
-                      : 'mr-auto bg-gray-200'
+                      ? 'ml-auto bg-[#4F46E5] text-white' 
+                      : 'mr-auto bg-white border border-[#E2E8F0] dark:text-black'
                   }`}
                 >
-                  {message.text}
-                  <span className="absolute bottom-0 right-0">{message.time}</span>
+                  {message.text && <p className="mb-2">{message.text}</p>}
+                  {message.files?.map((file: any, index: number) => (
+                    <div key={index} className="mt-2 border rounded-lg overflow-hidden">
+                      {file.type.startsWith('image/') ? (
+                        <img
+                          src={file.path}
+                          alt={file.originalName}
+                          className="max-h-64 w-auto max-w-full object-contain"
+                          loading="lazy"
+                        />
+                      ) : file.type === 'application/pdf' ? (
+                        <a
+                          href={file.path}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                          <FileIcon type={file.type} />
+                          <span className="truncate flex-1">{file.originalName}</span>
+                          <span className="text-xs text-gray-500">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </span>
+                        </a>
+                      ) : (
+                        <div className="p-3 flex items-center gap-2">
+                          <FileIcon type={file.type} />
+                          <a
+                            href={file.path}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                          >
+                            {file.originalName}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <span className="absolute bottom-3 right-3 text-xs font-medium flex items-center gap-1 opacity-50">{message.time} <LuCheckCheck /></span>
                 </div>
               ))}
             </div>
-
             {/* Formulario de chat */}
-            <form onSubmit={handleSubmit} className="mt-auto mx-0">
+            <form onSubmit={handleSubmit} className="mt-auto mx-0 flex flex-col items-end gap-4">
+              {/* Vista previa de archivos */}
+              {files.length > 0 && (
+                <div className="flex flex-wrap gap-4 p-2 border rounded-lg">
+                  {files.map((file, index) => (
+                    <div key={index} className="relative">
+                      {file.type.startsWith('image/') && (
+                        <img 
+                          src={URL.createObjectURL(file)} 
+                          alt="Preview" 
+                          className="h-16 w-16 object-cover rounded"
+                        />
+                      )}
+                      {file.type === 'application/pdf' && (
+                        <div className="h-16 w-16 bg-red-100 flex items-center justify-center rounded">
+                          <span className="text-xs text-red-600">PDF</span>
+                        </div>
+                      )}
+                      {file.type === 'video/mp4' && (
+                        <div className="h-16 w-16 bg-blue-100 flex items-center justify-center rounded">
+                          <span className="text-xs text-blue-600">MP4</span>
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="absolute -top-2 -right-2 bg-gray-200 !w-6 !h-6 rounded-lg p-1 cursor-pointer"
+                      >
+                        X
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
               <Textarea 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Escribe tu mensaje..."
+                className="!bg-white dark:!bg-[#181414] !h-40 text-base font-medium p-4 !rounded-3xl"
                 disabled={isLoading}
               />
-              <Button type="submit" size="lg" disabled={isLoading}>
-                {isLoading ? 'Enviando...' : 'Enviar'} <FaBeer />
-              </Button>
+              <div className="flex items-center gap-4">
+                <Input
+                  id="picture"
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept=".jpg,.jpeg,.png,.pdf,.mp4"
+                  multiple
+                  className="!hidden"
+                />
+                <Button
+                  type="button"
+                  className="!w-10 !h-10"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <LuPaperclip className="h-5 w-5" />
+                </Button>
+                <Button className="cursor-pointer" type="submit" size="lg" disabled={isLoading || (!input.trim() && files.length === 0)}>
+                  {isLoading ? 'Enviando...' : 'Enviar'} <LuSendHorizontal />
+                </Button>
+              </div>
             </form>
           </div>
         </main>
