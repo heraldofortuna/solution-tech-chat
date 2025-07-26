@@ -1,6 +1,7 @@
 import { HttpResponse, http } from 'msw';
 import { db } from './db';
 import { BusinessTopic } from '@/types/topic';
+import timestampToHHMM from "@/utils/timestampToHHMM";
 
 const businessResponses: Record<BusinessTopic, string> = {
   organigrama: "Nuestro organigrama se compone de:\n\n- Dirección General\n- Departamento de Desarrollo\n- Área Comercial\n- Equipo de Soporte\n\n¿Necesitas información sobre algún área en particular?",
@@ -33,32 +34,64 @@ const detectTopic = (text: string): string => {
 };
 
 export const handlers = [
-  http.get('http://localhost:3000/api/messages', () => {
-    const messages = db.message.getAll();
+  // Obtener todas las sesiones de chat
+  http.get('http://localhost:3000/api/chat-sessions', () => {
+    const sessions = db.chatSession.getAll();
+    return HttpResponse.json(sessions);
+  }),
+  // Crear nueva sesión
+  http.post('http://localhost:3000/api/chat-sessions', async () => {
+    const newSession = db.chatSession.create({
+      id: `session_${Date.now()}`,
+      title: `Conversación ${new Date().toLocaleDateString()}`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      preview: 'Nueva conversación iniciada'
+    });
+    return HttpResponse.json(newSession);
+  }),
+  // Obtener mensajes de una sesión específica
+  http.get('http://localhost:3000/api/chat-sessions/:chatId/messages', ({ params }) => {
+    const messages = db.message.findMany({
+      where: {
+        chatId: { equals: params.chatId as string }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
     return HttpResponse.json(messages);
   }),
-
-  http.post('http://localhost:3000/api/messages', async ({ request }) => {
+  // Guardar mensajes de una sesión específica
+  http.post('/api/chat-sessions/:chatId/messages', async ({ request, params }) => {
+    const { chatId } = params;
     const formData = await request.formData();
     const text = formData.get('text') as string;
     
-    // Procesamiento de archivos (mantén tu lógica actual)
-    const files: Array<{ name: string; type: string, image: string, size: string }> = [];
+    const files: Array<{
+      name: string;
+      type: string;
+      path: string;
+      size: string;
+      url?: string;
+    }> = [];
+    
     let index = 0;
-
     while (formData.has(`file_${index}`)) {
       const file = formData.get(`file_${index}`) as File;
+      const fileId = `file_${Date.now()}_${index}`;
+      const filePath = `/uploads/${fileId}_${file.name}`;
+
       files.push({
         name: file.name,
         type: file.type,
-        image: URL.createObjectURL(file),
+        path: filePath,
         size: `${(file.size / 1024).toFixed(1)} KB`,
+        url: URL.createObjectURL(file),
       });
       index++;
     }
 
     const hasFiles = files.length > 0;
-    const hasText = text.trim().length > 0;
+    const hasText = text?.trim().length > 0;
 
     if (!hasText && !hasFiles) {
       return HttpResponse.json(
@@ -67,20 +100,18 @@ export const handlers = [
       );
     }
 
-    // Guardar mensaje del usuario
     const userMessage = db.message.create({
-      id: Date.now().toString(),
+      id: `msg_${Date.now()}`,
+      chatId: chatId as string,
       text: hasText ? text : files.length > 1 ? "Archivos enviados" : "Archivo enviado",
       sender: 'user',
-      createdAt: Date.now(),
-      files: hasFiles ? files : undefined,
+      createdAt: timestampToHHMM(Date.now()),
+      files: hasFiles ? files : undefined
     });
 
-    // Respuesta inteligente
     let botResponseText: string;
     
     if (hasFiles) {
-      // Mantén tus respuestas para archivos
       const fileResponses = [
         "Documento recibido. ¿Necesitas que analice algo en particular?",
         "Archivo procesado. ¿Qué información necesitas sobre este material?",
@@ -88,21 +119,32 @@ export const handlers = [
       ];
       botResponseText = fileResponses[Math.floor(Math.random() * fileResponses.length)];
     } else {
-      // Respuesta basada en el tema detectado
       const topic = detectTopic(text);
       botResponseText = businessResponses[topic as BusinessTopic] || businessResponses.default;
     }
 
     const botResponse = db.message.create({
-      id: (Date.now() + 1).toString(),
+      id: `msg_${Date.now() + 1}`,
+      chatId: chatId as string,
       text: botResponseText,
       sender: 'bot',
-      createdAt: Date.now(),
+      createdAt: timestampToHHMM(Date.now())
+    });
+
+    const session = db.chatSession.update({
+      where: { id: { equals: chatId as string } },
+      data: {
+        updatedAt: Date.now(),
+        preview: hasText 
+          ? text.length > 30 ? `${text.substring(0, 30)}...` : text
+          : `${files.length} archivo${files.length > 1 ? 's' : ''} enviado${files.length > 1 ? 's' : ''}`
+      }
     });
 
     return HttpResponse.json({
       success: true,
       messages: [userMessage, botResponse],
+      session
     });
   })
 ];

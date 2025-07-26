@@ -3,8 +3,9 @@ import { Sender } from "./sender";
 
 export interface Message {
   id: string;
+  chatId: string;
   text: string;
   sender: Sender;
-  time: string;
+  createdAt: string;
   files?: ChatFile[];
 }

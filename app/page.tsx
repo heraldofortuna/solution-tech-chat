@@ -2,6 +2,7 @@
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { FaRegMoon, FaSearch } from "react-icons/fa";
 import { GoSun } from "react-icons/go";
+import { IoMdAdd } from "react-icons/io";
 import { LuSendHorizontal, LuCheckCheck, LuPaperclip, LuDownload } from "react-icons/lu";
 import { FileIcon } from "lucide-react";
 import { useTheme } from "next-themes"
@@ -9,15 +10,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Message } from "@/types/message";
-import timestampToHHMM from "@/utils/timestampToHHMM";
+import { ChatSession } from "@/types/chatsession";
 
 export default function Page() {
   const { setTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [input, setInput] = useState<string>("");
   const [search, setSearch] = useState<string>("");
   const [files, setFiles] = useState<File[]>([]);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string>('default');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -40,22 +44,62 @@ export default function Page() {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const loadMessages = async () => {
-    try {
-      const res = await fetch('http://localhost:3000/api/messages');
-      const data = await res.json();
-      const messages = data.map((message: any) => ({
-        id: message.id,
-        text: message.text,
-        sender: message.sender,
-        time: timestampToHHMM(message.createdAt),
-        files: message.files,
-      }));
+  const createNewSession = async () => {
+    const res = await fetch('/api/chat-sessions', { method: 'POST' });
+    const newSession = await res.json();
+    setCurrentChatId(newSession.id);
+    setSessions(prev => [...prev, newSession]);
+  };
 
-      setMessages(messages);
-    } catch (error) {
-      console.error('Error loading messages:', error);
+  const selectSession = (session: ChatSession) => {
+    setCurrentChatId(session.id)
+  }
+
+  const focusTextarea = () => {
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 200)
+  };
+
+  const scrollToChatBottom = () => {
+    setTimeout(() => {
+      requestAnimationFrame(() => {
+        scrollContainerRef.current?.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      });
+    }, 200);
+  }
+
+  const loadMessages = async () => {
+    const res = await fetch(`/api/chat-sessions/${currentChatId}/messages`);
+    const data = await res.json();
+    setMessages(data);
+  };
+
+  const sendMessage = async (
+    chatId: string, 
+    text: string, 
+    files: File[] = []
+  ) => {
+    const formData = new FormData();
+    formData.append('text', text);
+    
+    files.forEach((file, index) => {
+      formData.append(`file_${index}`, file);
+    });
+
+    const response = await fetch(`/api/chat-sessions/${chatId}/messages`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(await response.text());
     }
+
+    return await response.json();
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -65,43 +109,32 @@ export default function Page() {
     setIsLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append('text', input);
-      
-      files.forEach((file, index) => {
-        formData.append(`file_${index}`, file);
-      });
-
-      const response = await fetch('/api/messages', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error('Error al enviar');
-
-      await loadMessages();
-
-      requestAnimationFrame(() => {
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTo({
-            top: scrollContainerRef.current.scrollHeight,
-            behavior: 'smooth'
-          });
-        }
-      });
+      await sendMessage(currentChatId, input, files);
 
       setInput('');
       setFiles([]);
+
+      await loadMessages();
+
+      scrollToChatBottom();
     } catch (error) {
       console.error('Error:', error);
     } finally {
       setIsLoading(false);
+      focusTextarea();
     }
   };
 
   useEffect(() => {
     setTheme(isDarkMode ? 'dark' : 'light');
   }, [isDarkMode])
+
+  useEffect(() => {
+    if (currentChatId === 'default') return;
+    loadMessages();
+    focusTextarea();
+    scrollToChatBottom();
+  }, [currentChatId]);
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -115,8 +148,28 @@ export default function Page() {
 
   return (
     <div className="flex">
-      <aside className="hidden md:block w-20 h-screen border-r">
-        <div className="flex flex-col">
+      <aside className="min-w-4 md:min-w-20 h-screen border-r">
+        <div className="flex flex-col items-center gap-2 md:gap-4 px-2 md:px-4 py-15 md:py-20">
+          <Button
+            type="button"
+            className="!w-8 md:!w-10 !h-8 md:!h-10 cursor-pointer"
+            onClick={createNewSession}
+          >
+            <IoMdAdd />
+          </Button>
+          <span className="w-full h-px bg-border"></span>
+          {sessions.map((session: any, index: number) => (
+            <div key={session.id}>
+              <Button
+                type="button"
+                className="!w-8 md:!w-10 !h-8 md:!h-10 cursor-pointer"
+                variant={currentChatId === session.id ? 'default' : 'outline'}
+                onClick={() => selectSession(session)}
+              >
+                {index + 1}
+              </Button>
+            </div>
+          ))}
         </div>
       </aside>
       <div className="bg-[#F8FAFC] dark:bg-[#000] w-full h-screen flex flex-col">
@@ -141,7 +194,7 @@ export default function Page() {
               >
                 <FaSearch />
               </Button>
-              <Button variant="outline" size="icon" onClick={toggleTheme}>
+              <Button className="cursor-pointer" variant="outline" size="icon" onClick={toggleTheme}>
                 {isDarkMode ? <FaRegMoon /> : <GoSun />}
               </Button>
             </div>
@@ -151,7 +204,11 @@ export default function Page() {
         <main className="main p-6 md:py-8 md:px-12">
           <div className="h-full flex flex-col gap-6">
             {/* Área de mensajes */}
-            {messages.length === 0 ? (
+            {sessions.length === 0 ? (
+              <div className="h-full w-full flex items-center justify-center">
+                <p className="text-sm font-medium">Cree un nuevo chat</p>
+              </div>
+            ) : messages.length === 0 ? (
               <div className="h-full w-full flex items-center justify-center">
                 <p className="text-sm font-medium">No hay mensajes</p>
               </div>
@@ -171,14 +228,14 @@ export default function Page() {
                       <div key={index} className="mt-2 rounded-lg overflow-hidden">
                         {file.type.startsWith('image/') ? (
                           <img
-                            src={file.image}
+                            src={file.url}
                             alt={file.name}
                             className="max-w-full object-contain"
                             loading="lazy"
                           />
                         ) : file.type === 'application/pdf' ? (
                           <a
-                            href={file.image}
+                            href={file.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             download={file.name}
@@ -195,10 +252,10 @@ export default function Page() {
                               <video 
                                 controls 
                                 className="max-h-64 rounded-lg"
-                                src={file.image || URL.createObjectURL(file)}
+                                src={file.url || URL.createObjectURL(file)}
                               />
                               <a
-                                href={file.image}
+                                href={file.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 download={file.name}
@@ -223,7 +280,7 @@ export default function Page() {
                         )}
                       </div>
                     ))}
-                    <span className="absolute bottom-3 right-3 text-xs font-medium flex items-center gap-1 opacity-50">{message.time} <LuCheckCheck /></span>
+                    <span className="absolute bottom-3 right-3 text-xs font-medium flex items-center gap-1 opacity-50">{message.createdAt} <LuCheckCheck /></span>
                   </div>
                 ))}
               </div>
@@ -266,11 +323,12 @@ export default function Page() {
                 </div>
               )}
               <Textarea 
+                ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Escribe tu mensaje..."
                 className="!bg-white dark:!bg-[#181414] !h-20 md:!h-40 text-sm md:text-base font-medium p-4 !rounded-3xl"
-                disabled={isLoading}
+                disabled={isLoading || !sessions.length}
               />
               <div className="flex items-center gap-2 md:gap-4">
                 <Input

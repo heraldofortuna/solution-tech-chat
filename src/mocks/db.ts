@@ -1,19 +1,27 @@
 import { factory, primaryKey } from '@mswjs/data';
 
 export const db = factory({
+  chatSession: {
+    id: primaryKey(String),
+    title: String,
+    createdAt: Number,
+    updatedAt: Number,
+    preview: String
+  },
   message: {
     id: primaryKey(String),
+    chatId: String,
     text: String,
     sender: String,
-    createdAt: Number,
+    createdAt: String,
     files: Array,
   },
 });
 
-db.message.create({
-  id: '1',
-  text: '¡Hola! Soy SolutionTech. ¿En qué puedo ayudarte?',
-  sender: 'bot',
+db.chatSession.create({
+  id: 'default',
+  title: 'Conversación Principal',
   createdAt: Date.now(),
-  files: [],
+  updatedAt: Date.now(),
+  preview: '¡Hola! Soy SolutionTech. ¿En qué puedo ayudarte?'
 });
