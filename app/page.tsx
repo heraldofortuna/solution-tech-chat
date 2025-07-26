@@ -2,7 +2,7 @@
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { FaRegMoon } from "react-icons/fa";
 import { GoSun } from "react-icons/go";
-import { LuSendHorizontal, LuCheckCheck, LuPaperclip } from "react-icons/lu";
+import { LuSendHorizontal, LuCheckCheck, LuPaperclip, LuDownload } from "react-icons/lu";
 import { FileIcon } from "lucide-react";
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import timestampToHHMM from "@/utils/timestampToHHMM";
 export default function Page() {
   const { setTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState<string>("");
   const [files, setFiles] = useState<File[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -49,6 +50,7 @@ export default function Page() {
         time: timestampToHHMM(message.createdAt),
         files: message.files,
       }));
+
       setMessages(messages);
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -77,6 +79,15 @@ export default function Page() {
       if (!response.ok) throw new Error('Error al enviar');
 
       await loadMessages();
+
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({
+            top: scrollContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
 
       setInput('');
       setFiles([]);
@@ -113,7 +124,7 @@ export default function Page() {
           <div className="h-full flex items-center justify-between gap-6">
             <h1 className="text-lg md:text-3xl font-bold leading-10 whitespace-nowrap">SolutionTech🤖</h1>
             <div className="flex items-center gap-2">
-              <Input type="text" placeholder="Buscar mensaje" className="!bg-white dark:!bg-[#181414]" />
+              <Input type="text" placeholder="Buscar mensaje" className="!bg-white dark:!bg-[#181414] text-sm md:text-base" />
               <Button variant="outline" size="icon" onClick={toggleTheme}>
                 {isDarkMode ? <FaRegMoon /> : <GoSun />}
               </Button>
@@ -124,11 +135,11 @@ export default function Page() {
         <main className="main p-6 md:py-8 md:px-12">
           <div className="h-full flex flex-col gap-6">
             {/* Área de mensajes */}
-            <div className="flex-1 overflow-y-auto">
+            <div ref={scrollContainerRef} className="flex-1 scrollContainer overflow-y-auto">
               {messages.map((message: Message) => (
                 <div
                   key={message.id}
-                  className={`relative max-w-[60%] p-3 pb-8 mb-3 rounded-2xl ${
+                  className={`relative max-w-[90%] md:max-w-[60%] text-sm md:text-base p-3 pb-8 mb-3 rounded-2xl ${
                     message.sender === 'user' 
                       ? 'ml-auto bg-[#4F46E5] text-white' 
                       : 'mr-auto bg-white border border-[#E2E8F0] dark:text-black'
@@ -136,28 +147,47 @@ export default function Page() {
                 >
                   {message.text && <p className="mb-2">{message.text}</p>}
                   {message.files?.map((file: any, index: number) => (
-                    <div key={index} className="mt-2 border rounded-lg overflow-hidden">
+                    <div key={index} className="mt-2 rounded-lg overflow-hidden">
                       {file.type.startsWith('image/') ? (
                         <img
-                          src={file.path}
-                          alt={file.originalName}
-                          className="max-h-64 w-auto max-w-full object-contain"
+                          src={file.image}
+                          alt={file.name}
+                          className="max-w-full object-contain"
                           loading="lazy"
                         />
                       ) : file.type === 'application/pdf' ? (
                         <a
-                          href={file.path}
+                          href={file.image}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          download={file.name}
+                          className="w-fit flex items-center justify-between gap-4 p-3 border rounded-xl ml-auto cursor-pointer"
                         >
-                          <FileIcon type={file.type} />
-                          <span className="truncate flex-1">{file.originalName}</span>
-                          <span className="text-xs text-gray-500">
-                            {(file.size / 1024).toFixed(1)} KB
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <FileIcon type={file.type} />
+                            <span className="flex-1">{file.name}</span>
+                          </div>
+                          <span className="text-xs italic pt-1">{file.size}</span>
                         </a>
-                      ) : (
+                      ) : file.type === 'video/mp4' ? (
+                          <div className="flex flex-col gap-2">
+                            <video 
+                              controls 
+                              className="max-h-64 rounded-lg"
+                              src={file.image || URL.createObjectURL(file)}
+                            />
+                            <a
+                              href={file.image}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download={file.name}
+                              className="flex items-center gap-2 text-sm ml-auto mb-2"
+                            >
+                              <LuDownload className="h-4 w-4" />
+                              Descargar
+                            </a>
+                          </div>
+                        ) : (
                         <div className="p-3 flex items-center gap-2">
                           <FileIcon type={file.type} />
                           <a
@@ -166,7 +196,7 @@ export default function Page() {
                             rel="noopener noreferrer"
                             className="hover:underline"
                           >
-                            {file.originalName}
+                            {file.name}
                           </a>
                         </div>
                       )}
@@ -177,27 +207,29 @@ export default function Page() {
               ))}
             </div>
             {/* Formulario de chat */}
-            <form onSubmit={handleSubmit} className="mt-auto mx-0 flex flex-col items-end gap-4">
+            <form onSubmit={handleSubmit} className="mt-auto mx-0 flex flex-col items-end gap-2 md:gap-4">
               {/* Vista previa de archivos */}
               {files.length > 0 && (
                 <div className="flex flex-wrap gap-4 p-2 border rounded-lg">
                   {files.map((file, index) => (
                     <div key={index} className="relative">
-                      {file.type.startsWith('image/') && (
+                      {file.type.startsWith('image/') ? (
                         <img 
                           src={URL.createObjectURL(file)} 
                           alt="Preview" 
                           className="h-16 w-16 object-cover rounded"
                         />
-                      )}
-                      {file.type === 'application/pdf' && (
+                      ) : file.type === 'application/pdf' ? (
                         <div className="h-16 w-16 bg-red-100 flex items-center justify-center rounded">
                           <span className="text-xs text-red-600">PDF</span>
                         </div>
-                      )}
-                      {file.type === 'video/mp4' && (
+                      ) : file.type === 'video/mp4' ? (
                         <div className="h-16 w-16 bg-blue-100 flex items-center justify-center rounded">
                           <span className="text-xs text-blue-600">MP4</span>
+                        </div>
+                      ) : (
+                        <div className="h-16 w-16 bg-blue-100 flex items-center justify-center rounded">
+                          <span className="text-xs text-blue-600">File</span>
                         </div>
                       )}
                       <Button
@@ -215,10 +247,10 @@ export default function Page() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Escribe tu mensaje..."
-                className="!bg-white dark:!bg-[#181414] !h-40 text-base font-medium p-4 !rounded-3xl"
+                className="!bg-white dark:!bg-[#181414] !h-20 md:!h-40 text-sm md:text-base font-medium p-4 !rounded-3xl"
                 disabled={isLoading}
               />
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 md:gap-4">
                 <Input
                   id="picture"
                   type="file"
@@ -230,7 +262,7 @@ export default function Page() {
                 />
                 <Button
                   type="button"
-                  className="!w-10 !h-10"
+                  className="!w-10 !h-10 cursor-pointer"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <LuPaperclip className="h-5 w-5" />

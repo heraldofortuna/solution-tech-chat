@@ -1,6 +1,6 @@
 export interface ChatFile  {
-  path: string;
-  originalName: string;
+  name: string;
   type: string;
-  size?: number;
+  image?: string;
+  size?: string;
 }

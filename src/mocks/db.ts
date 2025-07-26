@@ -10,11 +10,10 @@ export const db = factory({
   },
 });
 
-// Mensaje inicial del bot
 db.message.create({
   id: '1',
   text: '¡Hola! Soy SolutionTech. ¿En qué puedo ayudarte?',
   sender: 'bot',
   createdAt: Date.now(),
-  files: [], // Inicializar como array vacío
+  files: [],
 });

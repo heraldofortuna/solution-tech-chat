@@ -129,3 +129,41 @@
     height: calc(100vh - 80px);
   }
 }
+
+.scrollContainer {
+  padding-right: 8px;
+}
+
+.scrollContainer::-webkit-scrollbar-track
+{
+	-webkit-box-shadow: unset;
+	background-color: #fff;
+}
+
+.scrollContainer::-webkit-scrollbar
+{
+	width: 4px;
+	background-color: #fff;
+}
+
+.scrollContainer::-webkit-scrollbar-thumb
+{
+	background-color: #CBD5E1;
+	border: 1px solid #CBD5E1;
+}
+
+.dark .scrollContainer::-webkit-scrollbar-track
+{
+	background-color: #181414 ;
+}
+
+.dark .scrollContainer::-webkit-scrollbar
+{
+  background-color: #181414;
+}
+
+.dark .scrollContainer::-webkit-scrollbar-thumb
+{
+  background-color: #475569;
+  border: 1px solid #475569;
+}
