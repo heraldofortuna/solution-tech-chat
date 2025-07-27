@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Message } from "@/types/message";
 import { ChatSession } from "@/types/chatsession";
+import { ChatFile } from "@/types/chatfile";
 
 export default function Page() {
   const { setTheme } = useTheme();
@@ -158,7 +159,7 @@ export default function Page() {
             <IoMdAdd />
           </Button>
           <span className="w-full h-px bg-border"></span>
-          {sessions.map((session: any, index: number) => (
+          {sessions.map((session: ChatSession, index: number) => (
             <div key={session.id}>
               <Button
                 type="button"
@@ -224,7 +225,7 @@ export default function Page() {
                     }`}
                   >
                     {message.text && <p className="mb-2">{message.text}</p>}
-                    {message.files?.map((file: any, index: number) => (
+                    {message.files?.map((file: ChatFile, index: number) => (
                       <div key={index} className="mt-2 rounded-lg overflow-hidden">
                         {file.type.startsWith('image/') ? (
                           <img
@@ -252,7 +253,7 @@ export default function Page() {
                               <video 
                                 controls 
                                 className="max-h-64 rounded-lg"
-                                src={file.url || URL.createObjectURL(file)}
+                                src={file.url}
                               />
                               <a
                                 href={file.url}
