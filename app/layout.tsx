@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   }
 }
 
-export const inter = Inter({
+const inter = Inter({
   weight: ['400', '700'],
   style: ['normal', 'italic'],
   subsets: ['latin'],
