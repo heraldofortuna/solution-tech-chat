@@ -36,12 +36,12 @@ const detectTopic = (text: string): string => {
 
 export const handlers = [
   // Obtener todas las sesiones de chat
-  http.get('http://localhost:3000/api/chat-sessions', () => {
+  http.get('/api/chat-sessions', () => {
     const sessions = db.chatSession.getAll();
     return HttpResponse.json(sessions);
   }),
   // Crear nueva sesión
-  http.post('http://localhost:3000/api/chat-sessions', async () => {
+  http.post('/api/chat-sessions', async () => {
     const newSession = db.chatSession.create({
       id: `session_${Date.now()}`,
       title: `Conversación ${new Date().toLocaleDateString()}`,
@@ -52,7 +52,7 @@ export const handlers = [
     return HttpResponse.json(newSession);
   }),
   // Obtener mensajes de una sesión específica
-  http.get('http://localhost:3000/api/chat-sessions/:chatId/messages', ({ params }) => {
+  http.get('/api/chat-sessions/:chatId/messages', ({ params }) => {
     const messages = db.message.findMany({
       where: {
         chatId: { equals: params.chatId as string }
