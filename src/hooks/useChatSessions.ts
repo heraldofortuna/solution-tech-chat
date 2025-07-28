@@ -10,7 +10,8 @@ export function useChatSessions() {
     queryFn: async () => {
       const res = await fetch('/api/chat-sessions');
       return res.json();
-    }
+    },
+    enabled: false
   });
 
   const { mutateAsync: createSession } = useMutation({

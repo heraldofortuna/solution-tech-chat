@@ -31,6 +31,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
           {file.type.startsWith('image/') ? (
             <Image
               src={file.url ?? ""}
+              width={600}
+              height={600}
               alt={file.name}
               className="max-w-full object-contain"
               loading="lazy"

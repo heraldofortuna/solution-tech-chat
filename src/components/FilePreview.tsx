@@ -15,6 +15,8 @@ export function FilePreview({ files, onRemoveFile }: FilePreviewProps) {
           {file.type.startsWith('image/') ? (
             <Image 
               src={URL.createObjectURL(file)} 
+              width={600}
+              height={600}
               alt="Preview" 
               className="h-16 w-16 object-cover rounded"
             />
