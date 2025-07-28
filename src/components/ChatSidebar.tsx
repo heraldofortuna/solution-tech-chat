@@ -5,8 +5,8 @@ import { IoMdAdd } from "react-icons/io";
 
 interface ChatSidebarProps {
   sessions: ChatSession[];
-  currentChatId: string;
-  onCreateNewSession: () => void;
+  currentChatId: string | null;
+  onCreateNewSession: () => Promise<void>;
   onSelectSession: (session: ChatSession) => void;
 }
 

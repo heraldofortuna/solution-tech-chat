@@ -2,7 +2,6 @@ import { HttpResponse, http } from 'msw';
 import { db } from './db';
 import { BusinessTopic } from '@/types/topic';
 import timestampToHHMM from "@/utils/timestampToHHMM";
-import { ChatFile } from '@/types/chatfile';
 
 const businessResponses: Record<BusinessTopic, string> = {
   organigrama: "Nuestro organigrama se compone de:\n\n- Dirección General\n- Departamento de Desarrollo\n- Área Comercial\n- Equipo de Soporte\n\n¿Necesitas información sobre algún área en particular?",

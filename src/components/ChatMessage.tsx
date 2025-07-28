@@ -1,4 +1,5 @@
 "use client";
+import Image from 'next/image'
 import { FileIcon } from "lucide-react";
 import { LuCheckCheck, LuDownload } from "react-icons/lu";
 import { ChatFile } from "@/types/chatfile";
@@ -28,8 +29,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
       {message.files?.map((file: ChatFile, index: number) => (
         <div key={index} className="mt-2 rounded-lg overflow-hidden">
           {file.type.startsWith('image/') ? (
-            <img
-              src={file.url}
+            <Image
+              src={file.url ?? ""}
               alt={file.name}
               className="max-w-full object-contain"
               loading="lazy"

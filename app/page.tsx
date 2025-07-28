@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes"
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatHeader } from "@/components/ChatHeader";
@@ -7,15 +7,16 @@ import { ChatMessagesList } from "@/components/ChatMessagesList";
 import { ChatInput } from "@/components/ChatInput";
 import { Message } from "@/types/message";
 import { ChatSession } from "@/types/chatsession";
+import { useChatSessions } from "@/hooks/useChatSessions";
 
 export default function Page() {
   const { setTheme } = useTheme();
+  const { sessions, createSession } = useChatSessions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState<string>("");
   const [search, setSearch] = useState<string>("");
   const [files, setFiles] = useState<File[]>([]);
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentChatId, setCurrentChatId] = useState<string>('default');
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [searchedMessageId, setSearchedMessageId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTextareaFocused, setIsTextareaFocused] = useState<boolean>(false);
@@ -41,17 +42,19 @@ export default function Page() {
   };
 
   const createNewSession = async () => {
-    const res = await fetch('/api/chat-sessions', { method: 'POST' });
-    const newSession = await res.json();
-    setCurrentChatId(newSession.id);
-    setSessions(prev => [...prev, newSession]);
+    try {
+      const newSession = await createSession();
+      setCurrentChatId(newSession.id);
+    } catch (error) {
+      console.error("Error creating session:", error);
+    }
   };
 
   const selectSession = (session: ChatSession) => {
     setCurrentChatId(session.id)
   }
 
-  const scrollToChatBottom = () => {
+  const scrollToChatBottom = useCallback(() => {
     setTimeout(() => {
       requestAnimationFrame(() => {
         scrollContainerRef.current?.scrollTo({
@@ -60,7 +63,7 @@ export default function Page() {
         });
       });
     }, 200);
-  }
+  }, []);
 
   const handleSearch = async () => {
     if (!search.trim()) return;
@@ -83,7 +86,7 @@ export default function Page() {
     }
   };
 
-  const scrollToSearchedMessage = (messageId: string) => {
+  const scrollToSearchedMessage = useCallback((messageId: string) => {
     setTimeout(() => {
       requestAnimationFrame(() => {
         const messageElement = document.getElementById(`message-${messageId}`);
@@ -92,7 +95,6 @@ export default function Page() {
             behavior: 'smooth',
             block: 'center'
           });
-
           messageElement.classList.add('ring-2', 'ring-blue-500');
           setTimeout(() => {
             messageElement.classList.remove('ring-2', 'ring-blue-500');
@@ -100,16 +102,17 @@ export default function Page() {
         }
       });
     }, 200);
-  };
-
-  const loadMessages = async () => {
+  }, []);
+  
+  const loadMessages = useCallback(async () => {
+    if (!currentChatId) return;
     const res = await fetch(`/api/chat-sessions/${currentChatId}/messages`);
     const data = await res.json();
     setMessages(data);
-  };
+  }, [currentChatId]);
 
   const sendMessage = async (
-    chatId: string, 
+    chatId: string | null, 
     text: string, 
     files: File[] = []
   ) => {
@@ -156,19 +159,25 @@ export default function Page() {
 
   useEffect(() => {
     setTheme(isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode])
+  }, [isDarkMode, setTheme])
 
   useEffect(() => {
-    if (currentChatId === 'default') return;
+    if (!currentChatId) return;
     loadMessages();
-    setIsTextareaFocused(!isTextareaFocused);
+    setIsTextareaFocused(prev => !prev);
     if (searchedMessageId) {
       scrollToSearchedMessage(searchedMessageId);
       setSearchedMessageId(null);
     } else {
       scrollToChatBottom();
     }
-  }, [currentChatId]);
+  }, [
+    currentChatId, 
+    loadMessages, 
+    searchedMessageId, 
+    scrollToChatBottom,
+    scrollToSearchedMessage
+  ]);
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -204,6 +213,7 @@ export default function Page() {
               messages={messages}
               sessions={sessions}
               scrollContainerRef={scrollContainerRef}
+              currentChatId={currentChatId}
             />
             
             <ChatInput

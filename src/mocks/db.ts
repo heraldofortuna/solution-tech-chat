@@ -17,11 +17,3 @@ export const db = factory({
     files: Array,
   },
 });
-
-db.chatSession.create({
-  id: 'default',
-  title: 'Conversación Principal',
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-  preview: '¡Hola! Soy SolutionTech. ¿En qué puedo ayudarte?'
-});

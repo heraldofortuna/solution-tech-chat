@@ -1,4 +1,5 @@
 "use client";
+import Image from 'next/image'
 import { Button } from "@/components/ui/button";
 
 interface FilePreviewProps {
@@ -12,7 +13,7 @@ export function FilePreview({ files, onRemoveFile }: FilePreviewProps) {
       {files.map((file, index) => (
         <div key={index} className="relative">
           {file.type.startsWith('image/') ? (
-            <img 
+            <Image 
               src={URL.createObjectURL(file)} 
               alt="Preview" 
               className="h-16 w-16 object-cover rounded"
