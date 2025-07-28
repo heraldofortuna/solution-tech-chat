@@ -1,5 +1,5 @@
 "use client";
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { FaRegMoon, FaSearch } from "react-icons/fa";
 import { GoSun } from "react-icons/go";
 import { IoMdAdd } from "react-icons/io";
@@ -23,6 +23,7 @@ export default function Page() {
   const [files, setFiles] = useState<File[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string>('default');
+  const [searchedMessageId, setSearchedMessageId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -72,6 +73,46 @@ export default function Page() {
       });
     }, 200);
   }
+
+  const handleSearch = async () => {
+    if (!search.trim()) return;
+    
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/search-messages?q=${encodeURIComponent(search)}`);
+      const data = await res.json();
+
+      if (data.length > 0) {
+        if (data[0].sessionId === currentChatId) {
+          scrollToSearchedMessage(data[0].id);
+        } else {
+          setCurrentChatId(data[0].sessionId);
+          setSearchedMessageId(data[0].id);
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const scrollToSearchedMessage = (messageId: string) => {
+    setTimeout(() => {
+      requestAnimationFrame(() => {
+        const messageElement = document.getElementById(`message-${messageId}`);
+        if (messageElement) {
+          messageElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+
+          messageElement.classList.add('ring-2', 'ring-blue-500');
+          setTimeout(() => {
+            messageElement.classList.remove('ring-2', 'ring-blue-500');
+          }, 2000);
+        }
+      });
+    }, 200);
+  };
 
   const loadMessages = async () => {
     const res = await fetch(`/api/chat-sessions/${currentChatId}/messages`);
@@ -134,7 +175,12 @@ export default function Page() {
     if (currentChatId === 'default') return;
     loadMessages();
     focusTextarea();
-    scrollToChatBottom();
+    if (searchedMessageId) {
+      scrollToSearchedMessage(searchedMessageId);
+      setSearchedMessageId(null);
+    } else {
+      scrollToChatBottom();
+    }
   }, [currentChatId]);
 
   useEffect(() => {
@@ -149,7 +195,7 @@ export default function Page() {
 
   return (
     <div className="flex">
-      <aside className="min-w-4 md:min-w-20 h-screen border-r">
+      <aside className="min-w-12 w-12 md:min-w-20 h-screen border-r">
         <div className="flex flex-col items-center gap-2 md:gap-4 px-2 md:px-4 py-15 md:py-20">
           <Button
             type="button"
@@ -191,7 +237,7 @@ export default function Page() {
                 type="button"
                 className="!w-9 !h-9 cursor-pointer"
                 disabled={search.length === 0}
-                onClick={() => fileInputRef.current?.click()}
+                onClick={handleSearch}
               >
                 <FaSearch />
               </Button>
@@ -217,6 +263,7 @@ export default function Page() {
               <div ref={scrollContainerRef} className="flex-1 scrollContainer overflow-y-auto">
                 {messages.map((message: Message) => (
                   <div
+                    id={`message-${message.id}`}
                     key={message.id}
                     className={`relative max-w-[90%] md:max-w-[60%] text-sm md:text-base p-3 pb-8 mb-3 rounded-2xl ${
                       message.sender === 'user' 

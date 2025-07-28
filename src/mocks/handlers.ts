@@ -2,6 +2,7 @@ import { HttpResponse, http } from 'msw';
 import { db } from './db';
 import { BusinessTopic } from '@/types/topic';
 import timestampToHHMM from "@/utils/timestampToHHMM";
+import { ChatFile } from '@/types/chatfile';
 
 const businessResponses: Record<BusinessTopic, string> = {
   organigrama: "Nuestro organigrama se compone de:\n\n- Dirección General\n- Departamento de Desarrollo\n- Área Comercial\n- Equipo de Soporte\n\n¿Necesitas información sobre algún área en particular?",
@@ -59,6 +60,30 @@ export const handlers = [
       orderBy: { createdAt: 'asc' }
     });
     return HttpResponse.json(messages);
+  }),
+  // Obtener todos los mensajes que coincidan con una búsqueda
+  http.get('/api/search-messages', async ({ request }) => {
+    const url = new URL(request.url);
+    const query = url.searchParams.get('q')?.toLowerCase() || '';
+    const allSessions = db.chatSession.getAll();
+
+    const results = allSessions.flatMap(session => {
+      const sessionMessages = db.message.findMany({
+        where: {
+          chatId: { equals: session.id }
+        }
+      });
+      
+      return sessionMessages
+        .filter(message => message.text?.toLowerCase().includes(query))
+        .map(message => ({
+          sessionId: session.id,
+          sessionTitle: session.title,
+          ...message
+        }));
+    });
+
+    return HttpResponse.json(results);
   }),
   // Guardar mensajes de una sesión específica
   http.post('/api/chat-sessions/:chatId/messages', async ({ request, params }) => {
